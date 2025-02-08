@@ -3,3 +3,4 @@ config.py
 cache.txt
 __pycache__
 .venv
+update_and_restart.sh
