@@ -64,7 +64,7 @@ async def on_message(message):
 
     # Check if the message contains "hi, kurage" (case-insensitive)
     if HEALTH_CHECK_GREETING in message.content.lower():
-        await message.channel.send("Hello! I'm alive and well!")
+        await message.channel.send("にゃーん")
 
 async def check_website():
     """
