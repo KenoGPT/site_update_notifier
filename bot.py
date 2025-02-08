@@ -4,7 +4,7 @@ import aiohttp
 import re
 import os
 from datetime import datetime
-from config import TOKEN, CHANNEL_ID, CHECK_URL, CHECK_INTERVAL, ERROR_INTERVAL, CACHE_FILE
+from config import TOKEN, CHANNEL_ID, CHECK_URL, CHECK_INTERVAL, ERROR_INTERVAL, CACHE_FILE, HEALTH_CHECK_GREETING
 
 # intents の設定（最低限必要なもの）
 intents = discord.Intents.default()
