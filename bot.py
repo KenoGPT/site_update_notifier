@@ -54,6 +54,17 @@ async def on_ready():
     # サイトチェック用のタスクを開始
     client.loop.create_task(check_website())
 
+# Insert the on_message handler here for a simple health-check
+@client.event
+async def on_message(message):
+    # Avoid responding to the bot's own messages
+    if message.author == client.user:
+        return
+
+    # Check if the message contains "hi, kurage" (case-insensitive)
+    if HEALTH_CHECK_GREETING in message.content.lower():
+        await message.channel.send("Hello! I'm alive and well!")
+
 async def check_website():
     """
     定期的にサイトの内容をチェックし、更新があれば通知するタスク
