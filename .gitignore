@@ -1,3 +1,5 @@
 # Ignore the configuration file that contains sensitive information
 config.py
 cache.txt
+__pycache__
+.venv
