@@ -8,6 +8,7 @@ from config import TOKEN, CHANNEL_ID, CHECK_URL, CHECK_INTERVAL, ERROR_INTERVAL,
 
 # intents の設定（最低限必要なもの）
 intents = discord.Intents.default()
+intents.message_content = True
 client = discord.Client(intents=intents)
 
 # 前回のサイト内容を保存する変数（初期値はファイルから読み込み）
