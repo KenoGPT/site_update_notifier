@@ -4,7 +4,17 @@ import aiohttp
 import re
 import os
 from datetime import datetime
-from config import TOKEN, CHANNEL_ID, CHECK_URL, CHECK_INTERVAL, ERROR_INTERVAL, CACHE_FILE, HEALTH_CHECK_GREETING
+from config import (
+    TOKEN,
+    CHANNEL_ID,
+    CHECK_URL,
+    CHECK_INTERVAL,
+    ERROR_INTERVAL,
+    CACHE_FILE,
+    HEALTH_CHECK_GREETING,
+    CHATGPT_TOKEN,
+    SYSTEM_PROMPT
+)
 
 # intents の設定（最低限必要なもの）
 intents = discord.Intents.default()
@@ -49,6 +59,33 @@ def update_cache(new_content):
     except Exception as e:
         print(f"キャッシュファイルの更新に失敗しました: {e}")
 
+async def call_chatgpt(prompt):
+    """
+    ChatGPT API (o3-mini model) を呼び出す関数
+    """
+    url = "https://api.openai.com/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {CHATGPT_TOKEN}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "model": "o3-mini",
+        "messages": [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": prompt}
+        ]
+    }
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, headers=headers, json=payload) as response:
+            if response.status == 200:
+                result = await response.json()
+                answer = result["choices"][0]["message"]["content"].strip()
+                return answer
+            else:
+                error = await response.text()
+                print(f"ChatGPT API request failed: {response.status} - {error}")
+                return "申し訳ありませんが、エラーが発生しましたにゃ。"
+
 @client.event
 async def on_ready():
     print(f'Logged in as {client.user}')
@@ -62,7 +99,20 @@ async def on_message(message):
     if message.author == client.user:
         return
 
-    # Check if the message contains "hi, kurage" (case-insensitive)
+    # --- ChatGPT連携: ボットがメンションされた場合 ---
+    if client.user in message.mentions:
+        # ボットのメンション部分を取り除いて、残りをプロンプトとして利用
+        prompt = message.content.replace(f"<@{client.user.id}>", "").replace(f"<@!{client.user.id}>", "").strip()
+        if not prompt:
+            await message.reply("何か質問してにゃ。")
+            return
+        await message.channel.trigger_typing()  # タイピングインジケータを表示
+        reply_text = await call_chatgpt(prompt)
+        # 返信するときに元のメッセージにリプライ（メンション付き）する
+        await message.reply(reply_text)
+        return
+
+    # --- 既存のヘルスチェック: "hi, koneko" が含まれていれば ---
     if HEALTH_CHECK_GREETING in message.content.lower():
         await message.channel.send("にゃーん")
 
