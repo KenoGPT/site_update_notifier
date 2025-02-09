@@ -3,6 +3,7 @@ import asyncio
 import aiohttp
 import re
 import os
+import logging
 from datetime import datetime
 from config import (
     TOKEN,
@@ -56,9 +57,9 @@ def update_cache(new_content):
     try:
         with open(CACHE_FILE, "w", encoding="utf-8") as f:
             f.write(new_content)
-        print("キャッシュファイルを更新しました。")
+        logging.info("キャッシュファイルを更新しました。")
     except Exception as e:
-        print(f"キャッシュファイルの更新に失敗しました: {e}")
+        logging.error(f"キャッシュファイルの更新に失敗しました: {e}")
 
 async def call_chatgpt(prompt):
     """
@@ -84,12 +85,12 @@ async def call_chatgpt(prompt):
                 return answer
             else:
                 error = await response.text()
-                print(f"ChatGPT API request failed: {response.status} - {error}")
+                logging.error(f"ChatGPT API request failed: {response.status} - {error}")
                 return "申し訳ありませんが、エラーが発生しましたにゃ。"
 
 @client.event
 async def on_ready():
-    print(f'Logged in as {client.user}')
+    logging.info(f'Logged in as {client.user}')
     # サイトチェック用のタスクを開始
     client.loop.create_task(check_website())
 
@@ -133,7 +134,7 @@ async def check_website():
                     # 初回実行時は前回の内容として保存
                     previous_content = content
                     update_cache(content)
-                    print("初回チェック完了。キャッシュファイルに保存しました。")
+                    logging.info("初回チェック完了。キャッシュファイルに保存しました。")
                 else:
                     # 抽出された (URL, タイトル) のリストを比較
                     old_entries = set(extract_titles(previous_content))
@@ -146,19 +147,19 @@ async def check_website():
                             messages = [f"タイトル: {title}\nURL: {url}" for url, title in added_entries]
                             titles_text = "\n\n".join(messages)
                             await channel.send(f"サイトが更新されましたにゃ！\n新しい記事:\n{titles_text}")
-                            print("更新を検知し、以下の内容で通知を送信しました:")
-                            print(titles_text)
+                            logging.info("更新を検知し、以下の内容で通知を送信しました:")
+                            logging.info(titles_text)
                         else:
-                            print("指定したチャンネルが見つかりません。")
+                            logging.error("指定したチャンネルが見つかりません。")
                         # 更新後の内容を保存（キャッシュファイルを更新）
                         previous_content = content
                         update_cache(content)
                     else:
                         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        print(f"更新は検知されませんでした。 現在の時刻: {current_time}")
+                        logging.info(f"更新は検知されませんでした。 現在の時刻: {current_time}")
                 await asyncio.sleep(CHECK_INTERVAL)
             except Exception as e:
-                print(f"エラーが発生しました: {e}")
+                logging.error(f"エラーが発生しました: {e}")
                 await asyncio.sleep(ERROR_INTERVAL)
 
 client.run(TOKEN)
