@@ -106,7 +106,10 @@ async def on_message(message):
         if not prompt:
             await message.reply("何か質問してにゃ。")
             return
-        await message.channel.trigger_typing()  # タイピングインジケータを表示
+        
+        # Send typing indicator using the updated method
+        await message.channel.send_typing()  
+
         reply_text = await call_chatgpt(prompt)
         # 返信するときに元のメッセージにリプライ（メンション付き）する
         await message.reply(reply_text)
