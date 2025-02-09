@@ -18,6 +18,12 @@ from config import (
     GPT_MODEL
 )
 
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[logging.StreamHandler()]  # Logs will go to stdout
+)
+
 # intents の設定（最低限必要なもの）
 intents = discord.Intents.default()
 intents.message_content = True
