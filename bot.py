@@ -145,6 +145,7 @@ async def check_website():
                     # 抽出された (URL, タイトル) のリストを比較
                     old_entries = set(extract_titles(previous_content))
                     new_entries = set(extract_titles(content))
+                    logging.info(new_entries)
                     added_entries = new_entries - old_entries
                     if added_entries:
                         channel = client.get_channel(CHANNEL_ID)
