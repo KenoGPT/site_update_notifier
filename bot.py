@@ -69,7 +69,7 @@ async def call_chatgpt(prompt):
         "Content-Type": "application/json"
     }
     payload = {
-        "model": "o3-mini",
+        "model": "gpt-4o-mini",
         "messages": [
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": prompt}
