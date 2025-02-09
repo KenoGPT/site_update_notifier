@@ -67,9 +67,9 @@ def update_cache(new_content):
     except Exception as e:
         logging.error(f"キャッシュファイルの更新に失敗しました: {e}")
 
-async def call_chatgpt(prompt):
+async def call_chatgpt_with_history(messages):
     """
-    ChatGPT API (o3-mini model) を呼び出す関数
+    Calls the ChatGPT API using the entire conversation history.
     """
     url = "https://api.openai.com/v1/chat/completions"
     headers = {
@@ -78,10 +78,7 @@ async def call_chatgpt(prompt):
     }
     payload = {
         "model": GPT_MODEL,
-        "messages": [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": prompt}
-        ]
+        "messages": messages
     }
     async with aiohttp.ClientSession() as session:
         async with session.post(url, headers=headers, json=payload) as response:
@@ -100,7 +97,11 @@ async def on_ready():
     # サイトチェック用のタスクを開始
     client.loop.create_task(check_website())
 
-# Insert the on_message handler here for a simple health-check
+# Global conversation history (starts with system prompt)
+conversation_history = [
+    {"role": "system", "content": SYSTEM_PROMPT}
+]
+
 @client.event
 async def on_message(message):
     # Avoid responding to the bot's own messages
@@ -109,17 +110,35 @@ async def on_message(message):
 
     # --- ChatGPT連携: ボットがメンションされた場合 ---
     if client.user in message.mentions:
-        # ボットのメンション部分を取り除いて、残りをプロンプトとして利用
-        prompt = message.content.replace(f"<@{client.user.id}>", "").replace(f"<@!{client.user.id}>", "").strip()
+        # Remove bot mentions from the message content
+        prompt = (
+            message.content.replace(f"<@{client.user.id}>", "")
+                           .replace(f"<@!{client.user.id}>", "")
+                           .strip()
+        )
         if not prompt:
             await message.reply("何か質問してにゃ。")
             return
-        
-        # Use the typing context manager to display a typing indicator
+
+        # If the message is a reply (message.reference exists), continue the conversation.
+        # Otherwise, reset the conversation history.
+        if message.reference:
+            # Append the new message to the existing conversation history.
+            conversation_history.append({"role": "user", "content": prompt})
+        else:
+            # Clear the conversation history and start a new conversation.
+            conversation_history.clear()
+            conversation_history.append({"role": "system", "content": SYSTEM_PROMPT})
+            conversation_history.append({"role": "user", "content": prompt})
+
+        # Show a typing indicator while waiting for the reply.
         async with message.channel.typing():
-            reply_text = await call_chatgpt(prompt)
-        
-        # Reply to the original message (reply includes a mention automatically)
+            reply_text = await call_chatgpt_with_history(conversation_history)
+
+        # Append the assistant's response to the conversation history.
+        conversation_history.append({"role": "assistant", "content": reply_text})
+
+        # Reply to the original message.
         await message.reply(reply_text)
         return
 
