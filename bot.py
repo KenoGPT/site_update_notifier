@@ -13,7 +13,8 @@ from config import (
     CACHE_FILE,
     HEALTH_CHECK_GREETING,
     CHATGPT_TOKEN,
-    SYSTEM_PROMPT
+    SYSTEM_PROMPT,
+    GPT_MODEL
 )
 
 # intents の設定（最低限必要なもの）
@@ -69,7 +70,7 @@ async def call_chatgpt(prompt):
         "Content-Type": "application/json"
     }
     payload = {
-        "model": "gpt-4o-mini",
+        "model": GPT_MODEL,
         "messages": [
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": prompt}
@@ -144,7 +145,7 @@ async def check_website():
                             # 各エントリを「タイトル：... \nURL：...」形式でフォーマット
                             messages = [f"タイトル: {title}\nURL: {url}" for url, title in added_entries]
                             titles_text = "\n\n".join(messages)
-                            await channel.send(f"サイトが更新されました！\n新しい記事:\n{titles_text}")
+                            await channel.send(f"サイトが更新されましたにゃ！\n新しい記事:\n{titles_text}")
                             print("更新を検知し、以下の内容で通知を送信しました:")
                             print(titles_text)
                         else:
