@@ -107,11 +107,11 @@ async def on_message(message):
             await message.reply("何か質問してにゃ。")
             return
         
-        # Send typing indicator using the updated method
-        await message.channel.send_typing()  
-
-        reply_text = await call_chatgpt(prompt)
-        # 返信するときに元のメッセージにリプライ（メンション付き）する
+        # Use the typing context manager to display a typing indicator
+        async with message.channel.typing():
+            reply_text = await call_chatgpt(prompt)
+        
+        # Reply to the original message (reply includes a mention automatically)
         await message.reply(reply_text)
         return
 
