@@ -35,9 +35,9 @@ if os.path.exists(CACHE_FILE):
     try:
         with open(CACHE_FILE, "r", encoding="utf-8") as f:
             previous_content = f.read()
-        print("キャッシュファイルから前回の内容を読み込みました。")
+        logging.info("キャッシュファイルから前回の内容を読み込みました。")
     except Exception as e:
-        print(f"キャッシュファイルの読み込みに失敗しました: {e}")
+        logging.error(f"キャッシュファイルの読み込みに失敗しました: {e}")
 
 def extract_titles(html):
     """
