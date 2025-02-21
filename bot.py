@@ -145,7 +145,19 @@ async def on_message(message):
 
     # --- 既存のヘルスチェック: "hi, koneko" が含まれていれば ---
     if HEALTH_CHECK_GREETING in message.content.lower():
-        cat_sounds = ["にゃーん", "みゃーん", "にゃおん", "にゃっ", "みゃっ", "にゃ", "みゃ", "にゃ～", "にゃん", "にゃお"]
+        cat_sounds = [
+            "にゃーん", 
+            "みゃーん", 
+            "にゃおん", 
+            "にゃっ", 
+            "みゃっ", 
+            "にゃ", 
+            "みゃ", 
+            "にゃ～", 
+            "にゃん", 
+            "にゃお",
+            "うにゃにゃにゃにゃにゃ！"
+        ]
         await message.channel.send(random.choice(cat_sounds))
 
 async def check_website():
