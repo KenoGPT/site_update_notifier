@@ -40,27 +40,21 @@ if os.path.exists(CACHE_FILE):
     except Exception as e:
         logging.error(f"キャッシュファイルの読み込みに失敗しました: {e}")
 
-def extract_titles(html):
+def extract_titles(html: str):
     """
     指定された HTML から <h3 class="title01"><a href="...">Title</a></h3>
-    の形式の URL とタイトルを抽出する関数
-    Returns a list of tuples (url, title).
+    の形式の (url, title) を抽出する関数。
     """
     pattern = r'<h3 class="title01">\s*<a href="([^"]+)">([^<]+)</a>\s*</h3>'
-    entries = re.findall(pattern, html)
-    return entries
+    return re.findall(pattern, html)
 
-async def fetch_site_content(session, url):
-    """
-    サイトの内容を取得する関数
-    """
+async def fetch_site_content(session, url: str):
+    """サイトの内容を取得する関数"""
     async with session.get(url) as response:
         return await response.text()
 
-def update_cache(new_content):
-    """
-    キャッシュファイルに新しいサイト内容を保存する
-    """
+def update_cache(new_content: str):
+    """キャッシュファイルに新しいサイト内容を保存"""
     try:
         with open(CACHE_FILE, "w", encoding="utf-8") as f:
             f.write(new_content)
@@ -69,9 +63,7 @@ def update_cache(new_content):
         logging.error(f"キャッシュファイルの更新に失敗しました: {e}")
 
 async def call_chatgpt_with_history(messages):
-    """
-    Calls the ChatGPT API using the entire conversation history.
-    """
+    """Calls the ChatGPT API using the entire conversation history."""
     url = "https://api.openai.com/v1/chat/completions"
     headers = {
         "Authorization": f"Bearer {CHATGPT_TOKEN}",
@@ -175,17 +167,24 @@ async def check_website():
                     update_cache(content)
                     logging.info("初回チェック完了。キャッシュファイルに保存しました。")
                 else:
-                    # 抽出された (URL, タイトル) のリストを比較
-                    old_entries = set(extract_titles(previous_content))
-                    new_entries = set(extract_titles(content))
-                    added_entries = new_entries - old_entries
+                    # 既存のタイトル一覧と新しいタイトル一覧を順序を保ったまま比較し、
+                    # 前回のリストに存在しないものを「新規」として扱う。
+                    old_list = extract_titles(previous_content)
+                    new_list = extract_titles(content)
+
+                    added_entries = [item for item in new_list if item not in old_list]
                     if added_entries:
                         channel = client.get_channel(CHANNEL_ID)
                         if channel:
-                            # 各エントリを「タイトル：... \nURL：...」形式でフォーマット
-                            messages = [f"タイトル: {title}\nURL: {url}" for url, title in added_entries]
-                            titles_text = "\n\n".join(messages)
-                            await channel.send(f"サイトが更新されましたにゃ！\n新しい記事:\n{titles_text}")
+                            # まとめて１つのメッセージにする
+                            formatted_list = []
+                            for (url, title) in added_entries:
+                                formatted_list.append(f"タイトル: {title}\nURL: {url}")
+
+                            titles_text = "\n\n".join(formatted_list)
+                            await channel.send(
+                                f"サイトが更新されましたにゃ！\n新しい記事:\n{titles_text}"
+                            )
                             logging.info("更新を検知し、以下の内容で通知を送信しました:")
                             logging.info(titles_text)
                         else:
