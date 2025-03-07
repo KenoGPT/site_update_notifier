@@ -1,5 +1,5 @@
 import os
-from pygithub import Github
+from github import Github
 import openai
 import config
 
