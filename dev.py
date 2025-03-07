@@ -1,6 +1,7 @@
 import os
 from github import Github
-import openai
+from openai import OpenAI
+
 import config
 
 PAT = getattr(config, 'PAT', '')
@@ -9,7 +10,7 @@ REPO_NAME = getattr(config, 'REPO_NAME', '')
 BOT_FILE_PATH = getattr(config, 'BOT_FILE_PATH', '')
 GPT_MODEL = config.GPT_MODEL
 
-openai.api_key = CHATGPT_TOKEN
+client = OpenAI(api_key=CHATGPT_TOKEN)
 
 async def handle_dev_message(message: str) -> str:
     if not (PAT and CHATGPT_TOKEN and BOT_FILE_PATH and REPO_NAME):
@@ -36,12 +37,10 @@ async def handle_dev_message(message: str) -> str:
     修正後のコードをマークダウン形式のコードブロックで示してください。
     """
     try:
-        response = openai.ChatCompletion.create(
-            model=GPT_MODEL,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.2
-        )
-        suggested_code = response['choices'][0]['message']['content']
+        response = client.chat.completions.create(model=GPT_MODEL,
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.2)
+        suggested_code = response.choices[0].message.content
     except Exception as e:
         return f"GPTによる修正案の取得に失敗しました: {str(e)}"
 
