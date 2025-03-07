@@ -7,6 +7,7 @@ import logging
 import random
 from datetime import datetime
 import config
+from dev import handle_dev_message
 
 TOKEN = config.TOKEN
 CHANNEL_ID = getattr(config, 'CHANNEL_ID', 0)
@@ -112,6 +113,10 @@ async def on_message(message):
     # Avoid responding to the bot's own messages
     if message.author == client.user:
         return
+
+    if PAT and "Dev mode" in message and client.user in message.mentions:
+        dev_command = message.replace("Dev mode", "").strip()
+        return await handle_dev_message(dev_command)  # awaitで呼び出し
 
     # --- ChatGPT連携: ボットがメンションされた場合 ---
     if client.user in message.mentions:
