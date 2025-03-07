@@ -114,7 +114,7 @@ async def on_message(message):
     if message.author == client.user:
         return
 
-    if PAT and "Dev mode" in message and client.user in message.mentions:
+    if PAT and "Dev mode" in message.content and client.user in message.mentions:
         dev_command = message.replace("Dev mode", "").strip()
         return await handle_dev_message(dev_command)  # awaitで呼び出し
 
