@@ -6,18 +6,22 @@ import os
 import logging
 import random
 from datetime import datetime
-from config import (
-    TOKEN,
-    CHANNEL_ID,
-    CHECK_URL,
-    CHECK_INTERVAL,
-    ERROR_INTERVAL,
-    CACHE_FILE,
-    HEALTH_CHECK_GREETING,
-    CHATGPT_TOKEN,
-    SYSTEM_PROMPT,
-    GPT_MODEL
-)
+import config
+
+TOKEN = config.TOKEN
+CHANNEL_ID = config.CHANNEL_ID
+CHECK_URL = getattr(config, 'CHECK_URL', '')
+CHECK_INTERVAL = getattr(config, 'CHECK_INTERVAL', 86400)
+ERROR_INTERVAL = getattr(config, 'ERROR_INTERVAL', 86400)
+CACHE_FILE = getattr(config, 'CACHE_FILE', '')
+HEALTH_CHECK_GREETING = getattr(config, 'HEALTH_CHECK_GREETING', '')
+GREETINGS = getattr(config, 'GREETINGS', [])
+CHATGPT_TOKEN = config.CHATGPT_TOKEN
+SYSTEM_PROMPT = config.SYSTEM_PROMPT
+GPT_MODEL = config.GPT_MODEL
+ERROR_MESSAGE = getattr(config, 'ERROR_MESSAGE', '')
+SITE_UPDATE_MESSAGE = getattr(config, 'SITE_UPDATE_MESSAGE', "{titles_text}")
+PAT = getattr(config, 'PAT', '')
 
 logging.basicConfig(
     level=logging.INFO,
@@ -32,13 +36,14 @@ client = discord.Client(intents=intents)
 
 # 前回のサイト内容を保存する変数（初期値はファイルから読み込み）
 previous_content = None
-if os.path.exists(CACHE_FILE):
-    try:
-        with open(CACHE_FILE, "r", encoding="utf-8") as f:
-            previous_content = f.read()
-        logging.info("キャッシュファイルから前回の内容を読み込みました。")
-    except Exception as e:
-        logging.error(f"キャッシュファイルの読み込みに失敗しました: {e}")
+if CACHE_FILE:
+    if os.path.exists(CACHE_FILE):
+        try:
+            with open(CACHE_FILE, "r", encoding="utf-8") as f:
+                previous_content = f.read()
+            logging.info("キャッシュファイルから前回の内容を読み込みました。")
+        except Exception as e:
+            logging.error(f"キャッシュファイルの読み込みに失敗しました: {e}")
 
 def extract_titles(html: str):
     """
@@ -49,9 +54,13 @@ def extract_titles(html: str):
     return re.findall(pattern, html)
 
 async def fetch_site_content(session, url: str):
-    """サイトの内容を取得する関数"""
-    async with session.get(url) as response:
-        return await response.text()
+    try:
+        async with session.get(url) as response:
+            response.raise_for_status()
+            return await response.text()
+    except aiohttp.ClientError as e:
+        logging.error(f"サイト取得エラー: {e}")
+        raise
 
 def update_cache(new_content: str):
     """キャッシュファイルに新しいサイト内容を保存"""
@@ -82,14 +91,17 @@ async def call_chatgpt_with_history(messages):
             else:
                 error = await response.text()
                 logging.error(f"ChatGPT API request failed: {response.status} - {error}")
-                return "申し訳ありませんが、エラーが発生しましたにゃ。"
+                return ERROR_MESSAGE
 
 @client.event
 async def on_ready():
     logging.info(f'Logged in as {client.user}')
     # サイトチェック用のタスクを開始
-    client.loop.create_task(check_website())
-
+    if CHECK_URL and CACHE_FILE:
+        # CHECK_URLが空文字でなければサイトチェック用のタスクを開始
+        client.loop.create_task(check_website())
+    else:
+        logging.info("CHECK_URLまたはCACHE_FILEが設定されていないため、サイトチェックをスキップします。")        
 # Global conversation history (starts with system prompt)
 conversation_history = [
     {"role": "system", "content": SYSTEM_PROMPT}
@@ -136,21 +148,8 @@ async def on_message(message):
         return
 
     # --- 既存のヘルスチェック: "hi, koneko" が含まれていれば ---
-    if HEALTH_CHECK_GREETING in message.content.lower():
-        cat_sounds = [
-            "にゃーん", 
-            "みゃーん", 
-            "にゃおん", 
-            "にゃっ", 
-            "みゃっ", 
-            "にゃ", 
-            "みゃ", 
-            "にゃ～", 
-            "にゃん", 
-            "にゃお",
-            "うにゃにゃにゃにゃにゃ！"
-        ]
-        await message.channel.send(random.choice(cat_sounds))
+    if GREETINGS and HEALTH_CHECK_GREETING in message.content.lower():
+        await message.channel.send(random.choice(GREETINGS))
 
 async def check_website():
     """
@@ -182,9 +181,8 @@ async def check_website():
                                 formatted_list.append(f"タイトル: {title}\nURL: {url}")
 
                             titles_text = "\n\n".join(formatted_list)
-                            await channel.send(
-                                f"サイトが更新されましたにゃ！\n新しい記事:\n{titles_text}"
-                            )
+                            message_to_send = SITE_UPDATE_MESSAGE.format(titles_text=titles_text)
+                            await channel.send(message_to_send)
                             logging.info("更新を検知し、以下の内容で通知を送信しました:")
                             logging.info(titles_text)
                         else:
