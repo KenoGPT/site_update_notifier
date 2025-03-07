@@ -9,7 +9,7 @@ from datetime import datetime
 import config
 
 TOKEN = config.TOKEN
-CHANNEL_ID = config.CHANNEL_ID
+CHANNEL_ID = getattr(config, 'CHANNEL_ID', 0)
 CHECK_URL = getattr(config, 'CHECK_URL', '')
 CHECK_INTERVAL = getattr(config, 'CHECK_INTERVAL', 86400)
 ERROR_INTERVAL = getattr(config, 'ERROR_INTERVAL', 86400)
@@ -97,11 +97,11 @@ async def call_chatgpt_with_history(messages):
 async def on_ready():
     logging.info(f'Logged in as {client.user}')
     # サイトチェック用のタスクを開始
-    if CHECK_URL and CACHE_FILE:
+    if CHECK_URL and CACHE_FILE and CHANNEL_ID:
         # CHECK_URLが空文字でなければサイトチェック用のタスクを開始
         client.loop.create_task(check_website())
     else:
-        logging.info("CHECK_URLまたはCACHE_FILEが設定されていないため、サイトチェックをスキップします。")        
+        logging.info("CHECK_URLまたはCACHE_FILEまたはCHANNEL_IDが設定されていないため、サイトチェックをスキップします。")        
 # Global conversation history (starts with system prompt)
 conversation_history = [
     {"role": "system", "content": SYSTEM_PROMPT}
