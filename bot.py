@@ -115,7 +115,7 @@ async def on_message(message):
         return
 
     if PAT and "Dev mode" in message.content and client.user in message.mentions:
-        dev_command = message.replace("Dev mode", "").strip()
+        dev_command = message.content.replace("Dev mode", "").strip()
         return await handle_dev_message(dev_command)  # awaitで呼び出し
 
     # --- ChatGPT連携: ボットがメンションされた場合 ---
