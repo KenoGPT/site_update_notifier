@@ -38,8 +38,7 @@ async def handle_dev_message(message: str) -> str:
     """
     try:
         response = client.chat.completions.create(model=GPT_MODEL,
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.2)
+        messages=[{"role": "user", "content": prompt}])
         suggested_code = response.choices[0].message.content
     except Exception as e:
         return f"GPTによる修正案の取得に失敗しました: {str(e)}"
