@@ -86,6 +86,11 @@ async def call_chatgpt_with_history(messages):
                 logging.error(f"ChatGPT API request failed: {response.status} - {error}")
                 return ERROR_MESSAGE
 
+async def typing_loop(channel):
+    while True:
+        await channel.trigger_typing()
+        await asyncio.sleep(8)
+
 @client.event
 async def on_ready():
     logging.info(f'Logged in as {client.user}')
@@ -118,8 +123,13 @@ async def on_message(message):
             conversation_history.clear()
             conversation_history.append({"role": "system", "content": SYSTEM_PROMPT})
             conversation_history.append({"role": "user", "content": prompt})
-        async with message.channel.typing():
-            reply_text = await call_chatgpt_with_history(conversation_history)
+        typing_task = asyncio.create_task(typing_loop(message.channel))
+        reply_text = await call_chatgpt_with_history(conversation_history)
+        typing_task.cancel()
+        try:
+            await typing_task
+        except asyncio.CancelledError:
+            pass
         conversation_history.append({"role": "assistant", "content": reply_text})
         await message.reply(reply_text)
         return
