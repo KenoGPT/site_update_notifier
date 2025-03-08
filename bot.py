@@ -27,15 +27,13 @@ PAT = getattr(config, 'PAT', '')
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler()]  # Logs will go to stdout
+    handlers=[logging.StreamHandler()]
 )
 
-# intents の設定（最低限必要なもの）
 intents = discord.Intents.default()
 intents.message_content = True
 client = discord.Client(intents=intents)
 
-# 前回のサイト内容を保存する変数（初期値はファイルから読み込み）
 previous_content = None
 if CACHE_FILE:
     if os.path.exists(CACHE_FILE):
@@ -47,10 +45,6 @@ if CACHE_FILE:
             logging.error(f"キャッシュファイルの読み込みに失敗しました: {e}")
 
 def extract_titles(html: str):
-    """
-    指定された HTML から <h3 class="title01"><a href="...">Title</a></h3>
-    の形式の (url, title) を抽出する関数。
-    """
     pattern = r'<h3 class="title01">\s*<a href="([^"]+)">([^<]+)</a>\s*</h3>'
     return re.findall(pattern, html)
 
@@ -64,7 +58,6 @@ async def fetch_site_content(session, url: str):
         raise
 
 def update_cache(new_content: str):
-    """キャッシュファイルに新しいサイト内容を保存"""
     try:
         with open(CACHE_FILE, "w", encoding="utf-8") as f:
             f.write(new_content)
@@ -73,7 +66,6 @@ def update_cache(new_content: str):
         logging.error(f"キャッシュファイルの更新に失敗しました: {e}")
 
 async def call_chatgpt_with_history(messages):
-    """Calls the ChatGPT API using the entire conversation history."""
     url = "https://api.openai.com/v1/chat/completions"
     headers = {
         "Authorization": f"Bearer {CHATGPT_TOKEN}",
@@ -97,96 +89,63 @@ async def call_chatgpt_with_history(messages):
 @client.event
 async def on_ready():
     logging.info(f'Logged in as {client.user}')
-    # サイトチェック用のタスクを開始
     if CHECK_URL and CACHE_FILE and CHANNEL_ID:
-        # CHECK_URLが空文字でなければサイトチェック用のタスクを開始
         client.loop.create_task(check_website())
     else:
-        logging.info("CHECK_URLまたはCACHE_FILEまたはCHANNEL_IDが設定されていないため、サイトチェックをスキップします。")        
-# Global conversation history (starts with system prompt)
+        logging.info("CHECK_URLまたはCACHE_FILEまたはCHANNEL_IDが設定されていないため、サイトチェックをスキップします。")
+
 conversation_history = [
     {"role": "system", "content": SYSTEM_PROMPT}
 ]
 
 @client.event
 async def on_message(message):
-    # Avoid responding to the bot's own messages
     if message.author == client.user:
         return
-
     if PAT and "Dev mode" in message.content and client.user in message.mentions:
         dev_command = message.content.replace("Dev mode", "").strip()
-        reply_text = await handle_dev_message(dev_command)  # awaitで呼び出し
+        reply_text = await handle_dev_message(dev_command)
         await message.reply(reply_text)
         return
-
-    # --- ChatGPT連携: ボットがメンションされた場合 ---
     if client.user in message.mentions:
-        # Remove bot mentions from the message content
-        prompt = (
-            message.content.replace(f"<@{client.user.id}>", "")
-                           .replace(f"<@!{client.user.id}>", "")
-                           .strip()
-        )
+        prompt = message.content.replace(f"<@{client.user.id}>", "").replace(f"<@!{client.user.id}>", "").strip()
         if not prompt:
             await message.reply("何か質問してにゃ。")
             return
-
-        # If the message is a reply (message.reference exists), continue the conversation.
-        # Otherwise, reset the conversation history.
         if message.reference:
-            # Append the new message to the existing conversation history.
             conversation_history.append({"role": "user", "content": prompt})
         else:
-            # Clear the conversation history and start a new conversation.
             conversation_history.clear()
             conversation_history.append({"role": "system", "content": SYSTEM_PROMPT})
             conversation_history.append({"role": "user", "content": prompt})
-
-        # Show a typing indicator while waiting for the reply.
         async with message.channel.typing():
             reply_text = await call_chatgpt_with_history(conversation_history)
-
-        # Append the assistant's response to the conversation history.
         conversation_history.append({"role": "assistant", "content": reply_text})
-
-        # Reply to the original message.
         await message.reply(reply_text)
         return
-
-    # --- 既存のヘルスチェック: "hi, koneko" が含まれていれば ---
     if GREETINGS and HEALTH_CHECK_GREETING in message.content.lower():
         await message.channel.send(random.choice(GREETINGS))
 
 async def check_website():
-    """
-    定期的にサイトの内容をチェックし、更新があれば通知するタスク
-    """
     global previous_content
     async with aiohttp.ClientSession() as session:
         while True:
             try:
                 content = await fetch_site_content(session, CHECK_URL)
                 if previous_content is None:
-                    # 初回実行時は前回の内容として保存
                     previous_content = content
                     update_cache(content)
                     logging.info("初回チェック完了。キャッシュファイルに保存しました。")
                 else:
-                    # 既存のタイトル一覧と新しいタイトル一覧を順序を保ったまま比較し、
-                    # 前回のリストに存在しないものを「新規」として扱う。
                     old_list = extract_titles(previous_content)
                     new_list = extract_titles(content)
-
                     added_entries = [item for item in new_list if item not in old_list]
                     if added_entries:
                         channel = client.get_channel(CHANNEL_ID)
                         if channel:
-                            # まとめて１つのメッセージにする
                             formatted_list = []
                             for (url, title) in added_entries:
                                 formatted_list.append(f"タイトル: {title}\nURL: {url}")
-
                             titles_text = "\n\n".join(formatted_list)
                             message_to_send = SITE_UPDATE_MESSAGE.format(titles_text=titles_text)
                             await channel.send(message_to_send)
@@ -194,7 +153,6 @@ async def check_website():
                             logging.info(titles_text)
                         else:
                             logging.error("指定したチャンネルが見つかりません。")
-                        # 更新後の内容を保存（キャッシュファイルを更新）
                         previous_content = content
                         update_cache(content)
                     else:
