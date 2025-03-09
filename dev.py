@@ -1,21 +1,23 @@
-import os
 from github import Github
 from openai import OpenAI
 import uuid
 import config
 
-PAT = getattr(config, 'PAT', '')
+PAT = getattr(config, "PAT", "")
 CHATGPT_TOKEN = config.CHATGPT_TOKEN
-REPO_NAME = getattr(config, 'REPO_NAME', '')
-BOT_FILE_PATH = getattr(config, 'BOT_FILE_PATH', '')
-FORKED_REPO_NAME = getattr(config, 'FORKED_REPO_NAME', '')
+REPO_NAME = getattr(config, "REPO_NAME", "")
+BOT_FILE_PATH = getattr(config, "BOT_FILE_PATH", "")
+FORKED_REPO_NAME = getattr(config, "FORKED_REPO_NAME", "")
 GPT_MODEL = config.GPT_MODEL
+
 
 def generate_branch_name(prefix="auto-fix-"):
     unique_id = uuid.uuid4().hex[:8]  # UUIDから8文字取得
     return f"{prefix}{unique_id}"
 
+
 client = OpenAI(api_key=CHATGPT_TOKEN)
+
 
 async def handle_dev_message(message: str) -> str:
     if not (PAT and CHATGPT_TOKEN and BOT_FILE_PATH and REPO_NAME and FORKED_REPO_NAME):
@@ -48,10 +50,17 @@ async def handle_dev_message(message: str) -> str:
     必ず修正後のコードのみを返信してください（説明文なしで）。
     """
     try:
-        response = client.chat.completions.create(model=GPT_MODEL,
-        messages=[{"role": "user", "content": prompt}])
+        response = client.chat.completions.create(
+            model=GPT_MODEL, messages=[{"role": "user", "content": prompt}]
+        )
         suggested_code = response.choices[0].message.content
-        repo.update_file(contents.path, commit_message, suggested_code, contents.sha, branch=branch_name)
+        repo.update_file(
+            contents.path,
+            commit_message,
+            suggested_code,
+            contents.sha,
+            branch=branch_name,
+        )
     except Exception as e:
         return f"GPTによる修正案の取得に失敗しました: {str(e)}"
 
