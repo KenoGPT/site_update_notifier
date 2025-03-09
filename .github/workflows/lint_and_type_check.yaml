@@ -17,6 +17,7 @@ jobs:
         with:
           ref: ${{ github.head_ref }}
           token: ${{ secrets.GH_TOKEN }}
+          path: updating
 
       - uses: actions/setup-python@v5
         with:
