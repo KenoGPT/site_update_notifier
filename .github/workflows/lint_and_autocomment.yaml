@@ -37,7 +37,7 @@ jobs:
         run: |
           flake8 . --max-line-length=88 > flake8_output.txt || true
 
-      - name: Comment PR with lint results
+      - name: Post PR with lint results
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           message: |
