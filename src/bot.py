@@ -6,7 +6,8 @@ import os
 import logging
 import random
 from datetime import datetime
-import config
+from config.config import CACHE_FILE
+from config import config
 from dev import handle_dev_message
 
 TOKEN = config.TOKEN
@@ -14,7 +15,6 @@ CHANNEL_ID = getattr(config, "CHANNEL_ID", 0)
 CHECK_URL = getattr(config, "CHECK_URL", "")
 CHECK_INTERVAL = getattr(config, "CHECK_INTERVAL", 86400)
 ERROR_INTERVAL = getattr(config, "ERROR_INTERVAL", 86400)
-CACHE_FILE = getattr(config, "CACHE_FILE", "")
 HEALTH_CHECK_GREETING = getattr(config, "HEALTH_CHECK_GREETING", "")
 GREETINGS = getattr(config, "GREETINGS", [])
 CHATGPT_TOKEN = config.CHATGPT_TOKEN
