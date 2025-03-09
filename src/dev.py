@@ -41,12 +41,18 @@ async def handle_dev_message(message: str) -> str:
     except Exception as e:
         return f"ブランチの作成に失敗しました: {str(e)}"
 
+    file_descriptions = "\n".join(
+        [
+            f"### {path}\n```python\n{content}\n```"
+            for path, content in files_content.items()
+        ]
+    )
+
     prompt = f"""
 あなたは優秀なソフトウェア開発者です。以下のファイル群を指示に従って修正してください。
 
 ## ファイル群：
-{chr(10).join([f"### {path}\n```python\n{content}\n```"
-               for path, content in files_content.items()])}
+{file_descriptions}
 
 ## 指示：
 {message}
