@@ -2,6 +2,7 @@ from github import Github
 from openai import OpenAI
 import uuid
 from config import config
+from .file_utils import get_file_from_repo
 
 PAT = getattr(config, "PAT", "")
 CHATGPT_TOKEN = config.CHATGPT_TOKEN
@@ -23,15 +24,15 @@ async def handle_dev_message(message: str) -> str:
     if not (PAT and CHATGPT_TOKEN and BOT_FILE_PATH and REPO_NAME and FORKED_REPO_NAME):
         return "環境変数が設定されていません。"
 
-    # GitHubからbot.pyの内容を取得
+    bot_file = get_file_from_repo(config.BOT_FILE_PATH)
+
+    if bot_file is None:
+        return "GitHubからファイルの取得に失敗しました。"
+
     try:
         g = Github(PAT)
         repo = g.get_repo(FORKED_REPO_NAME)
-        content = repo.get_contents(BOT_FILE_PATH, ref="main")
-        if isinstance(content, list):
-            return "ディレクトリが指定されました。"
 
-        bot_file = content
         bot_code = bot_file.decoded_content.decode("utf-8")
         branch_name = generate_branch_name()
         sb = repo.get_branch("main")
@@ -64,7 +65,7 @@ async def handle_dev_message(message: str) -> str:
             bot_file.path,
             commit_message,
             suggested_code,
-            content.sha,
+            bot_file.sha,
             branch=branch_name,
         )
 
