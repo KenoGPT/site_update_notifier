@@ -42,40 +42,40 @@ async def handle_dev_message(message: str) -> str:
         return f"ブランチの作成に失敗しました: {str(e)}"
 
     prompt = f"""
-    あなたは優秀なソフトウェア開発者です。以下のファイル群を指示に従って修正してください。
+あなたは優秀なソフトウェア開発者です。以下のファイル群を指示に従って修正してください。
 
-    ## ファイル群：
-    {chr(10).join([f"### {path}\n```python\n{content}\n```"
-                   for path, content in files_content.items()])}
+## ファイル群：
+{chr(10).join([f"### {path}\n```python\n{content}\n```"
+               for path, content in files_content.items()])}
 
-    ## 指示：
-    {message}
+## 指示：
+{message}
 
-    以下のルールを守って、JSONで結果を構造的に返してください：
+以下のルールを守って、JSONで結果を構造的に返してください：
 
-    - 変更または追加が必要なファイルのみを `changes` に含めてください。
-    - 変更不要なファイルは含めないでください。
-    - 新規作成が必要なファイルがあれば、それも`changes`に追加してください。
+- 変更または追加が必要なファイルのみを `changes` に含めてください。
+- 変更不要なファイルは含めないでください。
+- 新規作成が必要なファイルがあれば、それも`changes`に追加してください。
 
-    回答は以下のフォーマットを厳密に守ってください（JSON以外のテキストを含めないこと）：
+回答は以下のフォーマットを厳密に守ってください（JSON以外のテキストを含めないこと）：
 
-    ```json
-    {
-        "pr_title": "プルリクエストの明確で簡潔な日本語タイトル",
-        "pr_body": "プルリクエストの変更点や意図を簡潔に日本語で説明",
-        "changes": {
-            "ファイル名1": {
-                "commit_message": "1行のコミットメッセージ",
-                "updated_code": "修正後または追加するコード全体"
-            },
-            "ファイル名2": {
-                "commit_message": "1行のコミットメッセージ",
-                "updated_code": "修正後または追加するコード全体"
-            }
-        }
-    }
-    ```
-    """
+```json
+{{
+    "pr_title": "プルリクエストの明確で簡潔な日本語タイトル",
+    "pr_body": "プルリクエストの変更点や意図を簡潔に日本語で説明",
+    "changes": {{
+        "ファイル名1": {{
+            "commit_message": "1行のコミットメッセージ",
+            "updated_code": "修正後または追加するコード全体"
+        }},
+        "ファイル名2": {{
+            "commit_message": "1行のコミットメッセージ",
+            "updated_code": "修正後または追加するコード全体"
+        }}
+    }}
+}}
+```
+"""
 
     try:
         response = client.chat.completions.create(
