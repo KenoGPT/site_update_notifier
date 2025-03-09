@@ -1,9 +1,10 @@
 from github import Github
 from github.ContentFile import ContentFile
-import config
+from config import config
 
 PAT = getattr(config, "PAT", "")
 FORKED_REPO_NAME = getattr(config, "FORKED_REPO_NAME", "")
+REPO_NAME = getattr(config, "REPO_NAME", "")
 
 
 def get_file_from_repo(file_path: str, branch: str = "main") -> ContentFile | None:
@@ -58,3 +59,24 @@ def get_all_file_paths(directory: str = "src", branch: str = "main") -> list[str
             file_paths.append(content_file.path)
 
     return file_paths
+
+
+def create_pull_request(branch_name: str, pr_title: str, pr_body: str = "") -> str:
+    g = Github(PAT)
+
+    try:
+        base_repo = g.get_repo(REPO_NAME)
+
+        forked_repo = g.get_repo(FORKED_REPO_NAME)
+
+        pr = base_repo.create_pull(
+            title=pr_title,
+            body=pr_body,
+            head=f"{forked_repo.owner.login}:{branch_name}",
+            base="main",
+        )
+
+        return f"プルリクエストが作成されました: {pr.html_url}"
+
+    except Exception as e:
+        return f"プルリクエストの作成に失敗しました: {str(e)}"
