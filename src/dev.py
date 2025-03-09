@@ -3,7 +3,7 @@ import uuid
 from github import Github
 from openai import OpenAI
 from config import config
-from .github_utils import get_file_from_repo, get_all_file_paths
+from .github_utils import get_file_from_repo, get_all_file_paths, create_pull_request
 
 PAT = getattr(config, "PAT", "")
 CHATGPT_TOKEN = config.CHATGPT_TOKEN
@@ -105,4 +105,12 @@ async def handle_dev_message(message: str) -> str:
     except Exception as e:
         return f"GitHubへの変更の反映に失敗しました: {str(e)}"
 
-    return f"GPTによる修正案をブランチ「{branch_name}」にpushしました。\n\nコミットの解説：{explanation}"
+    pr_result = create_pull_request(
+        branch_name=branch_name, pr_title=commit_message, pr_body=explanation
+    )
+
+    return (
+        f"GPTによる修正案をブランチ「{branch_name}」にpushしました。\n\n"
+        f"コミットの解説：{explanation}\n\n"
+        f"{pr_result}"
+    )
