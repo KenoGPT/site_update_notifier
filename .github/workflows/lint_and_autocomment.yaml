@@ -1,7 +1,7 @@
 name: Lint and Auto Comment
 
 on:
-  pull_request:
+  pull_request_target:
     branches: [main]
 
 permissions:
@@ -14,6 +14,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
 
       - uses: actions/setup-python@v5
@@ -39,9 +41,8 @@ jobs:
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           message: |
-            ### Black formatting result:
+            ### Black formatting results:
             ```
-            ${{ steps.black.outputs }}
             $(cat black_output.txt)
             ```
             ### Flake8 lint results:
