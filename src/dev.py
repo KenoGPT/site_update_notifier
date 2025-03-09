@@ -42,25 +42,39 @@ async def handle_dev_message(message: str) -> str:
         return f"ブランチの作成に失敗しました: {str(e)}"
 
     prompt = f"""
-    あなたは優秀なソフトウェア開発者です。以下のファイル群のコードを指示に基づいて修正してください。
+    あなたは優秀なソフトウェア開発者です。以下のファイル群を指示に従って修正してください。
 
-    ファイル群：
-    {chr(10).join([f"## ファイル名: {path}\n```python\n{content}\n```"
+    ## ファイル群：
+    {chr(10).join([f"### {path}\n```python\n{content}\n```"
                    for path, content in files_content.items()])}
 
-    指示：
+    ## 指示：
     {message}
 
-    以下のフォーマットで必ず構造的に回答してください（説明文なし）：
+    以下のルールを守って、JSONで結果を構造的に返してください：
 
-    {{
-        "commit_message": "コミットの要約メッセージ",
-        "changes": {{
-            "file名1": "修正後のコード（変更がなければnull）",
-            "file名2": "修正後のコード（変更がなければnull）"
-        }},
-        "explanation": "コミット内容の簡単な説明"
-    }}
+    - 変更または追加が必要なファイルのみを `changes` に含めてください。
+    - 変更不要なファイルは含めないでください。
+    - 新規作成が必要なファイルがあれば、それも`changes`に追加してください。
+
+    回答は以下のフォーマットを厳密に守ってください（JSON以外のテキストを含めないこと）：
+
+    ```json
+    {
+        "pr_title": "プルリクエストの明確で簡潔な日本語タイトル",
+        "pr_body": "プルリクエストの変更点や意図を簡潔に日本語で説明",
+        "changes": {
+            "ファイル名1": {
+                "commit_message": "1行のコミットメッセージ",
+                "updated_code": "修正後または追加するコード全体"
+            },
+            "ファイル名2": {
+                "commit_message": "1行のコミットメッセージ",
+                "updated_code": "修正後または追加するコード全体"
+            }
+        }
+    }
+    ```
     """
 
     try:
@@ -69,48 +83,51 @@ async def handle_dev_message(message: str) -> str:
             messages=[{"role": "user", "content": prompt}],
             response_format={"type": "json_object"},
         )
-        result = response.choices[0].message.content
+        if response.choices[0].message.content is None:
+            return "構造解析に失敗しました。"
+
+        result = json.loads(response.choices[0].message.content)
     except Exception as e:
         return f"GPTによる修正案の取得に失敗しました: {str(e)}"
 
-    if result is None:
-        return "GPTによる修正案の取得に失敗しました"
+    # PRの情報取得
+    pr_title = result.get("pr_title", "自動生成PR")
+    pr_body = result.get("pr_body", "")
+    changes = result.get("changes", {})
+
+    if not changes:
+        return "GPTが提示した修正はありません。"
 
     try:
-        data = json.loads(result)
-    except json.JSONDecodeError:
-        return "GPTのレスポンスをJSONに変換できませんでした。"
+        for file_name, change in changes.items():
+            new_code = change["updated_code"]
+            commit_message = change["commit_message"]
 
-    commit_message = data.get("commit_message", "GPTによる自動修正")
-    changes = data.get("changes", {})
-    explanation = data.get("explanation", "")
+            existing_file = get_file_from_repo(file_name)
+            if existing_file:
+                # 既存ファイルの更新
+                repo.update_file(
+                    existing_file.path,
+                    commit_message,
+                    new_code,
+                    existing_file.sha,
+                    branch=branch_name,
+                )
+            else:
+                # 新規ファイル作成
+                repo.create_file(
+                    file_name, commit_message, new_code, branch=branch_name
+                )
 
-    # 変更をコミット
-    try:
-        for file_name, new_code in changes.items():
-            if new_code:
-                file = get_file_from_repo(file_name)
-                if file is None:
-                    repo.create_file(
-                        file_name, commit_message, new_code, branch=branch_name
-                    )
-                else:
-                    repo.update_file(
-                        file.path,
-                        commit_message,
-                        new_code,
-                        file.sha,
-                        branch=branch_name,
-                    )
     except Exception as e:
-        return f"GitHubへの変更の反映に失敗しました: {str(e)}"
+        return f"Commitに失敗しました: {str(e)}"
 
-    pr_result = create_pull_request(
-        branch_name=branch_name, pr_title=commit_message, pr_body=explanation
+    # PRの作成
+    pr_creation_result = create_pull_request(
+        branch_name=branch_name, pr_title=pr_title, pr_body=pr_body
     )
 
     return (
-        f"GPTによる修正案をブランチ「{branch_name}」にpushしました。\n\n"
-        f"コミットの解説：{explanation}\n\n"
-        f"{pr_result}"
+        f"ブランチ「{branch_name}」に変更をpushしました。\n"
+        f"プルリクエスト: {pr_creation_result}"
     )

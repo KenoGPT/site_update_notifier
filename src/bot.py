@@ -8,7 +8,7 @@ import random
 from datetime import datetime
 from config.config import CACHE_FILE
 from config import config
-from dev import handle_dev_message
+from .dev import handle_dev_message
 
 TOKEN = config.TOKEN
 CHANNEL_ID = getattr(config, "CHANNEL_ID", 0)
