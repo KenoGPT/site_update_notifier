@@ -2,7 +2,7 @@ from github import Github
 from openai import OpenAI
 import uuid
 from config import config
-from .file_utils import get_file_from_repo
+from .github_utils import get_file_from_repo
 
 PAT = getattr(config, "PAT", "")
 CHATGPT_TOKEN = config.CHATGPT_TOKEN
