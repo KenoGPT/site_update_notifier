@@ -38,6 +38,7 @@ jobs:
       - name: Comment PR with lint results
         uses: marocchino/sticky-pull-request-comment@v2
         with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           message: |
             ### Black formatting result:
             ```
