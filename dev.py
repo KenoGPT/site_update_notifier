@@ -27,8 +27,11 @@ async def handle_dev_message(message: str) -> str:
     try:
         g = Github(PAT)
         repo = g.get_repo(FORKED_REPO_NAME)
-        contents = repo.get_contents(BOT_FILE_PATH, ref="main")
-        bot_file = repo.get_contents(BOT_FILE_PATH)
+        content = repo.get_contents(BOT_FILE_PATH, ref="main")
+        if isinstance(content, list):
+            return "ディレクトリが指定されました。"
+
+        bot_file = content
         bot_code = bot_file.decoded_content.decode("utf-8")
         branch_name = generate_branch_name()
         sb = repo.get_branch("main")
@@ -54,13 +57,17 @@ async def handle_dev_message(message: str) -> str:
             model=GPT_MODEL, messages=[{"role": "user", "content": prompt}]
         )
         suggested_code = response.choices[0].message.content
+        if not suggested_code:
+            return "コードの生成に失敗しました。"
+
         repo.update_file(
-            contents.path,
+            bot_file.path,
             commit_message,
             suggested_code,
-            contents.sha,
+            content.sha,
             branch=branch_name,
         )
+
     except Exception as e:
         return f"GPTによる修正案の取得に失敗しました: {str(e)}"
 
