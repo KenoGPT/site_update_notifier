@@ -1,29 +1,50 @@
-name: Lint and Type Check
+name: Lint and Autoformat
 
 on:
   pull_request:
-    branches: [main]  # main 以外のブランチを使っている場合は変更
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
 
 jobs:
-  lint-and-type-check:
+  lint-and-format:
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
         with:
-          python-version: '3.11'  # 利用するPythonのバージョンに合わせる
+          ref: ${{ github.head_ref }}
+          token: ${{ secrets.GH_TOKEN }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install flake8 mypy
-          pip install -r requirements.txt  # 必要なら追加
+          pip install flake8 black mypy
+          pip install -r requirements.txt
 
+      # 先に black で整形
+      - name: Format code with black
+        run: black .
+
+      # black による変更を自動push
+      - name: Commit and push changes
+        run: |
+          git config --local user.name "github-actions[bot]"
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git diff-index --quiet HEAD || git commit -m "style: Apply auto-formatting by black"
+          git push origin HEAD:${{ github.head_ref }}
+
+      # flake8 で lint チェック（整形後）
       - name: Run flake8
         run: flake8 . --max-line-length=88
 
+      # mypy で型チェック（任意）
       - name: Run mypy
         run: mypy .
