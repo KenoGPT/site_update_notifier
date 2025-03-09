@@ -29,23 +29,11 @@ jobs:
           pip install flake8 black mypy
           pip install -r requirements.txt
 
-      # 先に black で整形
-      - name: Format code with black
-        run: black .
+      - name: Check code with black
+        run: black --check .
 
-      # black による変更を自動push
-      - name: Commit and push changes
-        run: |
-          git config --local user.name "github-actions[bot]"
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git add .
-          git diff-index --quiet HEAD || git commit -m "style: Apply auto-formatting by black"
-          git push https://${{ secrets.GH_PAT }}@github.com/${{ github.event.pull_request.head.repo.full_name }} HEAD:${{ github.event.pull_request.head.ref }}
-
-      # flake8 で lint チェック（整形後）
       - name: Run flake8
         run: flake8 . --max-line-length=88
 
-      # mypy で型チェック（任意）
       - name: Run mypy
         run: mypy .
