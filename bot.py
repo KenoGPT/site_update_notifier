@@ -92,7 +92,7 @@ async def call_chatgpt_with_history(messages):
 
 async def typing_loop(channel):
     while True:
-        await channel.trigger_typing()
+        await channel.typing()
         await asyncio.sleep(8)
 
 
