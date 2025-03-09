@@ -10,24 +10,24 @@ import config
 from dev import handle_dev_message
 
 TOKEN = config.TOKEN
-CHANNEL_ID = getattr(config, 'CHANNEL_ID', 0)
-CHECK_URL = getattr(config, 'CHECK_URL', '')
-CHECK_INTERVAL = getattr(config, 'CHECK_INTERVAL', 86400)
-ERROR_INTERVAL = getattr(config, 'ERROR_INTERVAL', 86400)
-CACHE_FILE = getattr(config, 'CACHE_FILE', '')
-HEALTH_CHECK_GREETING = getattr(config, 'HEALTH_CHECK_GREETING', '')
-GREETINGS = getattr(config, 'GREETINGS', [])
+CHANNEL_ID = getattr(config, "CHANNEL_ID", 0)
+CHECK_URL = getattr(config, "CHECK_URL", "")
+CHECK_INTERVAL = getattr(config, "CHECK_INTERVAL", 86400)
+ERROR_INTERVAL = getattr(config, "ERROR_INTERVAL", 86400)
+CACHE_FILE = getattr(config, "CACHE_FILE", "")
+HEALTH_CHECK_GREETING = getattr(config, "HEALTH_CHECK_GREETING", "")
+GREETINGS = getattr(config, "GREETINGS", [])
 CHATGPT_TOKEN = config.CHATGPT_TOKEN
 SYSTEM_PROMPT = config.SYSTEM_PROMPT
 GPT_MODEL = config.GPT_MODEL
-ERROR_MESSAGE = getattr(config, 'ERROR_MESSAGE', '')
-SITE_UPDATE_MESSAGE = getattr(config, 'SITE_UPDATE_MESSAGE', "{titles_text}")
-PAT = getattr(config, 'PAT', '')
+ERROR_MESSAGE = getattr(config, "ERROR_MESSAGE", "")
+SITE_UPDATE_MESSAGE = getattr(config, "SITE_UPDATE_MESSAGE", "{titles_text}")
+PAT = getattr(config, "PAT", "")
 
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler()]
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler()],
 )
 
 intents = discord.Intents.default()
@@ -44,9 +44,11 @@ if CACHE_FILE:
         except Exception as e:
             logging.error(f"キャッシュファイルの読み込みに失敗しました: {e}")
 
+
 def extract_titles(html: str):
     pattern = r'<h3 class="title01">\s*<a href="([^"]+)">([^<]+)</a>\s*</h3>'
     return re.findall(pattern, html)
+
 
 async def fetch_site_content(session, url: str):
     try:
@@ -57,6 +59,7 @@ async def fetch_site_content(session, url: str):
         logging.error(f"サイト取得エラー: {e}")
         raise
 
+
 def update_cache(new_content: str):
     try:
         with open(CACHE_FILE, "w", encoding="utf-8") as f:
@@ -65,16 +68,14 @@ def update_cache(new_content: str):
     except Exception as e:
         logging.error(f"キャッシュファイルの更新に失敗しました: {e}")
 
+
 async def call_chatgpt_with_history(messages):
     url = "https://api.openai.com/v1/chat/completions"
     headers = {
         "Authorization": f"Bearer {CHATGPT_TOKEN}",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
     }
-    payload = {
-        "model": GPT_MODEL,
-        "messages": messages
-    }
+    payload = {"model": GPT_MODEL, "messages": messages}
     async with aiohttp.ClientSession() as session:
         async with session.post(url, headers=headers, json=payload) as response:
             if response.status == 200:
@@ -83,25 +84,31 @@ async def call_chatgpt_with_history(messages):
                 return answer
             else:
                 error = await response.text()
-                logging.error(f"ChatGPT API request failed: {response.status} - {error}")
+                logging.error(
+                    f"ChatGPT API request failed: {response.status} - {error}"
+                )
                 return ERROR_MESSAGE
+
 
 async def typing_loop(channel):
     while True:
         await channel.trigger_typing()
         await asyncio.sleep(8)
 
+
 @client.event
 async def on_ready():
-    logging.info(f'Logged in as {client.user}')
+    logging.info(f"Logged in as {client.user}")
     if CHECK_URL and CACHE_FILE and CHANNEL_ID:
         client.loop.create_task(check_website())
     else:
-        logging.info("CHECK_URLまたはCACHE_FILEまたはCHANNEL_IDが設定されていないため、サイトチェックをスキップします。")
+        logging.info(
+            "CHECK_URLまたはCACHE_FILEまたはCHANNEL_IDが設定されていないため、サイトチェックをスキップします。"
+        )
 
-conversation_history = [
-    {"role": "system", "content": SYSTEM_PROMPT}
-]
+
+conversation_history = [{"role": "system", "content": SYSTEM_PROMPT}]
+
 
 @client.event
 async def on_message(message):
@@ -119,7 +126,11 @@ async def on_message(message):
         await message.reply(reply_text)
         return
     if client.user in message.mentions:
-        prompt = message.content.replace(f"<@{client.user.id}>", "").replace(f"<@!{client.user.id}>", "").strip()
+        prompt = (
+            message.content.replace(f"<@{client.user.id}>", "")
+            .replace(f"<@!{client.user.id}>", "")
+            .strip()
+        )
         if not prompt:
             await message.reply("何か質問してにゃ。")
             return
@@ -146,6 +157,7 @@ async def on_message(message):
     if GREETINGS and HEALTH_CHECK_GREETING in message.content.lower():
         await message.channel.send(random.choice(GREETINGS))
 
+
 async def check_website():
     global previous_content
     async with aiohttp.ClientSession() as session:
@@ -164,12 +176,16 @@ async def check_website():
                         channel = client.get_channel(CHANNEL_ID)
                         if channel:
                             formatted_list = []
-                            for (url, title) in added_entries:
+                            for url, title in added_entries:
                                 formatted_list.append(f"タイトル: {title}\nURL: {url}")
                             titles_text = "\n\n".join(formatted_list)
-                            message_to_send = SITE_UPDATE_MESSAGE.format(titles_text=titles_text)
+                            message_to_send = SITE_UPDATE_MESSAGE.format(
+                                titles_text=titles_text
+                            )
                             await channel.send(message_to_send)
-                            logging.info("更新を検知し、以下の内容で通知を送信しました:")
+                            logging.info(
+                                "更新を検知し、以下の内容で通知を送信しました:"
+                            )
                             logging.info(titles_text)
                         else:
                             logging.error("指定したチャンネルが見つかりません。")
@@ -177,10 +193,13 @@ async def check_website():
                         update_cache(content)
                     else:
                         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        logging.info(f"更新は検知されませんでした。 現在の時刻: {current_time}")
+                        logging.info(
+                            f"更新は検知されませんでした。 現在の時刻: {current_time}"
+                        )
                 await asyncio.sleep(CHECK_INTERVAL)
             except Exception as e:
                 logging.error(f"エラーが発生しました: {e}")
                 await asyncio.sleep(ERROR_INTERVAL)
+
 
 client.run(TOKEN)
