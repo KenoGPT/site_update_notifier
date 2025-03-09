@@ -124,6 +124,10 @@ async def on_message(message):
             await message.reply("何か質問してにゃ。")
             return
         if message.reference:
+            if message.author.bot:
+                rounds = (len(conversation_history) - 1) // 2
+                if rounds >= 3:
+                    return
             conversation_history.append({"role": "user", "content": prompt})
         else:
             conversation_history.clear()
