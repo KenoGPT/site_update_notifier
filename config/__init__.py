@@ -1,0 +1,20 @@
+# config/config.py
+__all__ = [
+    "CACHE_FILE",
+    "TOKEN",
+    "CHATGPT_TOKEN",
+    "SYSTEM_PROMPT",
+    "GPT_MODEL",
+    "CHANNEL_ID",
+    "CHECK_URL",
+    "CHECK_INTERVAL",
+    "ERROR_INTERVAL",
+    "HEALTH_CHECK_GREETING",
+    "ERROR_MESSAGE",
+    "PAT",
+    "GREETINGS",
+    "SITE_UPDATE_MESSAGE",
+    "REPO_NAME",
+    "FORKED_REPO_NAME",
+    "BOT_FILE_PATH",
+]
