@@ -6,7 +6,6 @@ from config import config
 from .github_utils import get_file_from_repo, get_all_file_paths, create_pull_request
 from github.GithubException import GithubException
 
-
 PAT = getattr(config, "PAT", "")
 CHATGPT_TOKEN = config.CHATGPT_TOKEN
 REPO_NAME = getattr(config, "REPO_NAME", "")
@@ -116,14 +115,14 @@ async def handle_dev_message(message: str) -> str:
     for file_name, change in changes.items():
         if not isinstance(change, dict):
             return (
-                f"ファイル「{file_name}」の変更内容が正しくありません（型が異常です）。"
+                f"ファイル『{file_name}』の変更内容が正しくありません（型が異常です）。"
             )
 
         new_code = change.get("updated_code")
         commit_message = change.get("commit_message")
 
         if not new_code or not commit_message:
-            return f"ファイル「{file_name}」の変更に必須フィールドが不足しています。"
+            return f"ファイル『{file_name}』の変更に必須フィールドが不足しています。"
 
         existing_file = get_file_from_repo(file_name, branch=branch_name)
 
@@ -144,9 +143,9 @@ async def handle_dev_message(message: str) -> str:
                     branch=branch_name,
                 )
         except GithubException as e:
-            return f"ファイル「{file_name}」のGitHub操作に失敗しました: {e.data.get('message', str(e))}"
+            return f"ファイル『{file_name}』のGitHub操作に失敗しました: {e.data.get('message', str(e))}"
         except Exception as e:
-            return f"ファイル「{file_name}」の予期せぬエラー: {str(e)}"
+            return f"ファイル『{file_name}』の予期せぬエラー: {str(e)}"
 
     # PRの作成
     pr_creation_result = create_pull_request(
@@ -154,6 +153,12 @@ async def handle_dev_message(message: str) -> str:
     )
 
     return (
-        f"ブランチ「{branch_name}」に変更をpushしました。\n"
+        f"ブランチ『{branch_name}』に変更をpushしました。\n"
         f"プルリクエスト: {pr_creation_result}"
     )
+
+
+def handle_dev_message_sync(message: str) -> str:
+    import asyncio
+
+    return asyncio.run(handle_dev_message(message))
