@@ -113,7 +113,7 @@ async def handle_dev_message(message: str) -> str:
             new_code = change["updated_code"]
             commit_message = change["commit_message"]
 
-            existing_file = get_file_from_repo(file_name)
+            existing_file = get_file_from_repo(file_name, branch=branch_name)
             if existing_file:
                 # 既存ファイルの更新
                 repo.update_file(
