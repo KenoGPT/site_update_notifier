@@ -9,6 +9,7 @@ from datetime import datetime
 from config.config import CACHE_FILE
 from config import config
 from .dev import handle_dev_message_sync
+from github import Github
 
 TOKEN = config.TOKEN
 CHANNEL_ID = getattr(config, "CHANNEL_ID", 0)
@@ -42,11 +43,16 @@ if CACHE_FILE:
                 previous_content = f.read()
             logging.info("キャッシュファイルから前回の内容を読み込みました。")
         except Exception as e:
-            logging.error(f"キャッシュファイルの読み込みに失敗しました: {e}")
+            logging.error(
+                f"キャッシュファイルの読み込みに失敗しました: {e}"
+            )
 
 
 def extract_titles(html: str):
-    pattern = r'<h3 class="title01">\s*<a href="([^"]+)">([^<]+)</a>\s*</h3>'
+    pattern = (
+        r'<h3 class="title01">
+        \s*<a href="([^"]+)">([^<]+)</a>\s*</h3>'
+    )
     return re.findall(pattern, html)
 
 
@@ -103,7 +109,8 @@ async def on_ready():
         client.loop.create_task(check_website())
     else:
         logging.info(
-            "CHECK_URLまたはCACHE_FILEまたはCHANNEL_IDが設定されていないため、サイトチェックをスキップします。"
+            "CHECK_URLまたはCACHE_FILEまたはCHANNEL_IDが設定されていないため、"
+            "サイトチェックをスキップします。"
         )
 
 
@@ -117,7 +124,6 @@ async def on_message(message):
     if PAT and "Dev mode" in message.content and client.user in message.mentions:
         dev_command = message.content.replace("Dev mode", "").strip()
         typing_task = asyncio.create_task(typing_loop(message.channel))
-        # handle_dev_messageを別スレッドで実行
         reply_text = await asyncio.to_thread(handle_dev_message_sync, dev_command)
         typing_task.cancel()
         try:
@@ -135,6 +141,25 @@ async def on_message(message):
         if not prompt:
             await message.reply("何か質問してにゃ。")
             return
+        if prompt.lower() == "check issue":
+            try:
+                g = Github(PAT)
+                repo = g.get_repo(config.REPO_NAME)
+                issues = repo.get_issues(state="open")
+                issues_list = []
+                for issue in issues:
+                    issues_list.append(
+                        f"Issue#{issue.number}: {issue.title} - URL: "
+                        f"{issue.html_url}"
+                    )
+                reply_text = ("\n".join(issues_list)
+                              if issues_list
+                              else "現在オープンなIssueはありません。")
+                await message.reply(reply_text)
+            except Exception as e:
+                logging.error(f"Issue取得中にエラー発生: {e}")
+                await message.reply("Issueの取得に失敗しました。")
+            return
         if message.reference:
             if message.author.bot:
                 rounds = (len(conversation_history) - 1) // 2
@@ -143,7 +168,10 @@ async def on_message(message):
             conversation_history.append({"role": "user", "content": prompt})
         else:
             conversation_history.clear()
-            conversation_history.append({"role": "system", "content": SYSTEM_PROMPT})
+            conversation_history.append({
+                "role": "system",
+                "content": SYSTEM_PROMPT
+            })
             conversation_history.append({"role": "user", "content": prompt})
         typing_task = asyncio.create_task(typing_loop(message.channel))
         reply_text = await call_chatgpt_with_history(conversation_history)
@@ -168,17 +196,23 @@ async def check_website():
                 if previous_content is None:
                     previous_content = content
                     update_cache(content)
-                    logging.info("初回チェック完了。キャッシュファイルに保存しました。")
+                    logging.info(
+                        "初回チェック完了。キャッシュファイルに保存しました。"
+                    )
                 else:
                     old_list = extract_titles(previous_content)
                     new_list = extract_titles(content)
-                    added_entries = [item for item in new_list if item not in old_list]
+                    added_entries = [
+                        item for item in new_list if item not in old_list
+                    ]
                     if added_entries:
                         channel = client.get_channel(CHANNEL_ID)
                         if channel:
                             formatted_list = []
                             for url, title in added_entries:
-                                formatted_list.append(f"タイトル: {title}\nURL: {url}")
+                                formatted_list.append(
+                                    f"タイトル: {title}\nURL: {url}"
+                                )
                             titles_text = "\n\n".join(formatted_list)
                             message_to_send = SITE_UPDATE_MESSAGE.format(
                                 titles_text=titles_text
@@ -189,7 +223,9 @@ async def check_website():
                             )
                             logging.info(titles_text)
                         else:
-                            logging.error("指定したチャンネルが見つかりません。")
+                            logging.error(
+                                "指定したチャンネルが見つかりません。"
+                            )
                         previous_content = content
                         update_cache(content)
                     else:
