@@ -3,7 +3,8 @@ import uuid
 from github import Github
 from openai import OpenAI
 from config import config
-from .github_utils import get_file_from_repo, get_all_file_paths, create_pull_request
+from .github_utils.helper import get_file_from_repo, get_all_file_paths, \
+    create_pull_request
 from github.GithubException import GithubException
 
 PAT = getattr(config, "PAT", "")
@@ -48,12 +49,10 @@ async def handle_dev_message(message: str) -> str:
             continue
         files_content[file_path] = file.decoded_content.decode("utf-8")
 
-    file_descriptions = "\n".join(
-        [
-            f"### {path}\n```python\n{content}\n```"
-            for path, content in files_content.items()
-        ]
-    )
+    file_descriptions = "\n".join([
+        f"### {path}\n```python\n{content}\n```"
+        for path, content in files_content.items()
+    ])
 
     system_message = (
         "あなたは優秀なソフトウェア開発者です。与えられたファイル群を指示に従って"
@@ -82,7 +81,8 @@ async def handle_dev_message(message: str) -> str:
         "```\n"
     )
     user_message = (
-        "## ファイル群：\n" f"{file_descriptions}\n\n" "## 指示：\n" f"{message}\n"
+        "## ファイル群：\n" f"{file_descriptions}\n\n"
+        "## 指示：\n" f"{message}\n"
     )
 
     try:
