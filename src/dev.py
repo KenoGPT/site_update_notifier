@@ -4,6 +4,8 @@ from github import Github
 from openai import OpenAI
 from config import config
 from .github_utils import get_file_from_repo, get_all_file_paths, create_pull_request
+from github.GithubException import GithubException
+
 
 PAT = getattr(config, "PAT", "")
 CHATGPT_TOKEN = config.CHATGPT_TOKEN
@@ -105,17 +107,28 @@ async def handle_dev_message(message: str) -> str:
     pr_body = result.get("pr_body", "")
     changes = result.get("changes", {})
 
+    if not isinstance(changes, dict):
+        return "GPTが提示した修正の形式が正しくありません（changesの型異常）。"
+
     if not changes:
         return "GPTが提示した修正はありません。"
 
-    try:
-        for file_name, change in changes.items():
-            new_code = change["updated_code"]
-            commit_message = change["commit_message"]
+    for file_name, change in changes.items():
+        if not isinstance(change, dict):
+            return (
+                f"ファイル「{file_name}」の変更内容が正しくありません（型が異常です）。"
+            )
 
-            existing_file = get_file_from_repo(file_name, branch=branch_name)
+        new_code = change.get("updated_code")
+        commit_message = change.get("commit_message")
+
+        if not new_code or not commit_message:
+            return f"ファイル「{file_name}」の変更に必須フィールドが不足しています。"
+
+        existing_file = get_file_from_repo(file_name, branch=branch_name)
+
+        try:
             if existing_file:
-                # 既存ファイルの更新
                 repo.update_file(
                     existing_file.path,
                     commit_message,
@@ -124,13 +137,16 @@ async def handle_dev_message(message: str) -> str:
                     branch=branch_name,
                 )
             else:
-                # 新規ファイル作成
                 repo.create_file(
-                    file_name, commit_message, new_code, branch=branch_name
+                    file_name,
+                    commit_message,
+                    new_code,
+                    branch=branch_name,
                 )
-
-    except Exception as e:
-        return f"Commitに失敗しました: {str(e)}"
+        except GithubException as e:
+            return f"ファイル「{file_name}」のGitHub操作に失敗しました: {e.data.get('message', str(e))}"
+        except Exception as e:
+            return f"ファイル「{file_name}」の予期せぬエラー: {str(e)}"
 
     # PRの作成
     pr_creation_result = create_pull_request(
