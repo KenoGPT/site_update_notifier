@@ -82,10 +82,7 @@ async def handle_dev_message(message: str) -> str:
         "```\n"
     )
     user_message = (
-        "## ファイル群：\n"
-        f"{file_descriptions}\n\n"
-        "## 指示：\n"
-        f"{message}\n"
+        "## ファイル群：\n" f"{file_descriptions}\n\n" "## 指示：\n" f"{message}\n"
     )
 
     try:
