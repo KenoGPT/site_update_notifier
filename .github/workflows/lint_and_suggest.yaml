@@ -30,6 +30,9 @@ jobs:
           pip install black flake8 mypy
           pip install -r requirements.txt
 
+      - name: Check syntax errors
+        run: python -m compileall .
+
       - name: Apply black suggestions to PR
         uses: reviewdog/action-suggester@v1
         with:
