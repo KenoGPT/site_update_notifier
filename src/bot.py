@@ -50,8 +50,8 @@ if CACHE_FILE:
 
 def extract_titles(html: str):
     pattern = (
-        r'<h3 class="title01">
-        \s*<a href="([^"]+)">([^<]+)</a>\s*</h3>'
+        r'<h3 class="title01">'
+        r'\s*<a href="([^"]+)">([^<]+)</a>\s*</h3>'
     )
     return re.findall(pattern, html)
 
