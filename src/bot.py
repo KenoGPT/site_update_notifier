@@ -9,6 +9,7 @@ from datetime import datetime
 from config.config import CACHE_FILE
 from config import config
 from .dev import handle_dev_message_sync
+from github import Github
 
 TOKEN = config.TOKEN
 CHANNEL_ID = getattr(config, "CHANNEL_ID", 0)
@@ -103,7 +104,8 @@ async def on_ready():
         client.loop.create_task(check_website())
     else:
         logging.info(
-            "CHECK_URLまたはCACHE_FILEまたはCHANNEL_IDが設定されていないため、サイトチェックをスキップします。"
+            "CHECK_URLまたはCACHE_FILEまたはCHANNEL_IDが設定されていないため、"
+            "サイトチェックをスキップします。"
         )
 
 
@@ -117,7 +119,6 @@ async def on_message(message):
     if PAT and "Dev mode" in message.content and client.user in message.mentions:
         dev_command = message.content.replace("Dev mode", "").strip()
         typing_task = asyncio.create_task(typing_loop(message.channel))
-        # handle_dev_messageを別スレッドで実行
         reply_text = await asyncio.to_thread(handle_dev_message_sync, dev_command)
         typing_task.cancel()
         try:
@@ -134,6 +135,27 @@ async def on_message(message):
         )
         if not prompt:
             await message.reply("何か質問してにゃ。")
+            return
+        if prompt.lower() == "check issue":
+            try:
+                g = Github(PAT)
+                repo = g.get_repo(config.REPO_NAME)
+                issues = repo.get_issues(state="open")
+                issues_list = []
+                for issue in issues:
+                    issues_list.append(
+                        f"Issue#{issue.number}: {issue.title} - URL: "
+                        f"{issue.html_url}"
+                    )
+                reply_text = (
+                    "\n".join(issues_list)
+                    if issues_list
+                    else "現在オープンなIssueはありません。"
+                )
+                await message.reply(reply_text)
+            except Exception as e:
+                logging.error(f"Issue取得中にエラー発生: {e}")
+                await message.reply("Issueの取得に失敗しました。")
             return
         if message.reference:
             if message.author.bot:
