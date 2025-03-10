@@ -160,5 +160,5 @@ async def handle_dev_message(message: str) -> str:
 
 def handle_dev_message_sync(message: str) -> str:
     import asyncio
-    
+
     return asyncio.run(handle_dev_message(message))
