@@ -12,9 +12,11 @@ REPO_NAME = getattr(config, "REPO_NAME", "")
 FORKED_REPO_NAME = getattr(config, "FORKED_REPO_NAME", "")
 GPT_MODEL = config.GPT_MODEL
 
+
 def generate_branch_name(prefix="auto-fix-"):
     unique_id = uuid.uuid4().hex[:8]  # UUIDから8文字取得
     return f"{prefix}{unique_id}"
+
 
 client = OpenAI(api_key=CHATGPT_TOKEN)
 
@@ -158,4 +160,5 @@ async def handle_dev_message(message: str) -> str:
 
 def handle_dev_message_sync(message: str) -> str:
     import asyncio
+    
     return asyncio.run(handle_dev_message(message))
