@@ -148,9 +148,9 @@ async def on_message(message):
                         f"{issue.html_url}"
                     )
                 reply_text = (
-                	"\n".join(issues_list)
-                	if issues_list
-                	else "現在オープンなIssueはありません。"
+                    "\n".join(issues_list)
+                    if issues_list
+                    else "現在オープンなIssueはありません。"
                 )
                 await message.reply(reply_text)
             except Exception as e:
