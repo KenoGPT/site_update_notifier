@@ -8,7 +8,7 @@ import random
 from datetime import datetime
 from config.config import CACHE_FILE
 from config import config
-from .dev import handle_dev_message
+from .dev import handle_dev_message, handle_dev_message_sync
 
 TOKEN = config.TOKEN
 CHANNEL_ID = getattr(config, "CHANNEL_ID", 0)
@@ -106,7 +106,6 @@ async def on_ready():
             "CHECK_URLまたはCACHE_FILEまたはCHANNEL_IDが設定されていないため、サイトチェックをスキップします。"
         )
 
-
 conversation_history = [{"role": "system", "content": SYSTEM_PROMPT}]
 
 
@@ -117,7 +116,8 @@ async def on_message(message):
     if PAT and "Dev mode" in message.content and client.user in message.mentions:
         dev_command = message.content.replace("Dev mode", "").strip()
         typing_task = asyncio.create_task(typing_loop(message.channel))
-        reply_text = await handle_dev_message(dev_command)
+        # handle_dev_messageを別スレッドで実行
+        reply_text = await asyncio.to_thread(handle_dev_message_sync, dev_command)
         typing_task.cancel()
         try:
             await typing_task
