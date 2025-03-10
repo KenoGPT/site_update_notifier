@@ -8,7 +8,7 @@ import random
 from datetime import datetime
 from config.config import CACHE_FILE
 from config import config
-from .dev import handle_dev_message, handle_dev_message_sync
+from .dev import handle_dev_message_sync
 
 TOKEN = config.TOKEN
 CHANNEL_ID = getattr(config, "CHANNEL_ID", 0)
@@ -105,6 +105,7 @@ async def on_ready():
         logging.info(
             "CHECK_URLまたはCACHE_FILEまたはCHANNEL_IDが設定されていないため、サイトチェックをスキップします。"
         )
+
 
 conversation_history = [{"role": "system", "content": SYSTEM_PROMPT}]
 
