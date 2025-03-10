@@ -73,7 +73,7 @@ async def handle_dev_message(message: str) -> str:
         '            "commit_message": "1行のコミットメッセージ",\n'
         '            "updated_code": "修正後または追加するコード全体"\n'
         "        },\n"
-        '        "ファイル名2": {\n"
+        '        "ファイル名2": {\n'
         '            "commit_message": "1行のコミットメッセージ",\n'
         '            "updated_code": "修正後または追加するコード全体"\n'
         "        }\n"
