@@ -28,14 +28,21 @@ jobs:
           pip install flake8 black mypy
           pip install -r requirements.txt
 
-      # black によるチェック＋自動コメント
       - name: Run Black formatter (check only)
+        id: black
         run: |
           black --check --diff . > black_output.txt || true
+          echo "black_result<<EOF" >> $GITHUB_OUTPUT
+          cat black_output.txt >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Run flake8
+        id: flake8
         run: |
           flake8 . --max-line-length=88 > flake8_output.txt || true
+          echo "flake8_result<<EOF" >> $GITHUB_OUTPUT
+          cat flake8_output.txt >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Post PR with lint results
         uses: marocchino/sticky-pull-request-comment@v2
@@ -43,11 +50,12 @@ jobs:
           message: |
             ### Black formatting results:
             ```
-            $(cat black_output.txt)
+            ${{ steps.black.outputs.black_result }}
             ```
+            
             ### Flake8 lint results:
             ```
-            $(cat flake8_output.txt)
+            ${{ steps.flake8.outputs.flake8_result }}
             ```
         env: 
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
