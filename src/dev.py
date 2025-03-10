@@ -24,13 +24,6 @@ client = OpenAI(api_key=CHATGPT_TOKEN)
 async def handle_dev_message(message: str) -> str:
     if not (PAT and CHATGPT_TOKEN and REPO_NAME and FORKED_REPO_NAME):
         return "環境変数が設定されていません。"
-    file_paths = get_all_file_paths("src")
-    files_content = {}
-    for file_path in file_paths:
-        file = get_file_from_repo(file_path)
-        if file is None:
-            return f"GitHubからファイル「{file_path}」の取得に失敗しました。"
-        files_content[file_path] = file.decoded_content.decode("utf-8")
 
     g = Github(PAT)
     branch_name = generate_branch_name()
@@ -41,10 +34,18 @@ async def handle_dev_message(message: str) -> str:
         base_main = base_repo.get_branch("main")
         commit_sha = base_main.commit.sha
 
-        repo = g.get_repo(FORKED_REPO_NAME)
-        repo.create_git_ref(ref=f"refs/heads/{branch_name}", sha=commit_sha)
+        forked_repo = g.get_repo(FORKED_REPO_NAME)
+        forked_repo.create_git_ref(ref=f"refs/heads/{branch_name}", sha=commit_sha)
     except Exception as e:
         return f"ブランチの作成に失敗しました: {str(e)}"
+
+    files_content = {}
+    file_paths = get_all_file_paths("src", branch=branch_name)
+    for file_path in file_paths:
+        file = get_file_from_repo(file_path, branch=branch_name)
+        if file is None:
+            continue
+        files_content[file_path] = file.decoded_content.decode("utf-8")
 
     file_descriptions = "\n".join(
         [
@@ -128,7 +129,7 @@ async def handle_dev_message(message: str) -> str:
 
         try:
             if existing_file:
-                repo.update_file(
+                forked_repo.update_file(
                     existing_file.path,
                     commit_message,
                     new_code,
@@ -136,7 +137,7 @@ async def handle_dev_message(message: str) -> str:
                     branch=branch_name,
                 )
             else:
-                repo.create_file(
+                forked_repo.create_file(
                     file_name,
                     commit_message,
                     new_code,
