@@ -29,7 +29,8 @@ async def handle_dev_message(message: str) -> str:
     branch_name = generate_branch_name()
 
     try:
-        # REPO_NAMEのmainブランチの最新コミットSHAを利用して、FORKED_REPO_NAMEにブランチ作成
+        # REPO_NAMEのmainブランチの最新コミットSHAを利用して、
+        # FORKED_REPO_NAMEにブランチ作成
         base_repo = g.get_repo(REPO_NAME)
         base_main = base_repo.get_branch("main")
         commit_sha = base_main.commit.sha
@@ -54,45 +55,43 @@ async def handle_dev_message(message: str) -> str:
         ]
     )
 
-    prompt = f"""
-あなたは優秀なソフトウェア開発者です。以下のファイル群を指示に従って修正してください。
-
-## ファイル群：
-{file_descriptions}
-
-## 指示：
-{message}
-
-以下のルールを守って、JSONで結果を構造的に返してください：
-
-- 変更または追加が必要なファイルのみを `changes` に含めてください。
-- 変更不要なファイルは含めないでください。
-- 新規作成が必要なファイルがあれば、それも`changes`に追加してください。
-
-回答は以下のフォーマットを厳密に守ってください（JSON以外のテキストを含めないこと）：
-
-```json
-{{
-    "pr_title": "プルリクエストの明確で簡潔な日本語タイトル",
-    "pr_body": "プルリクエストの変更点や意図を簡潔に日本語で説明",
-    "changes": {{
-        "ファイル名1": {{
-            "commit_message": "1行のコミットメッセージ",
-            "updated_code": "修正後または追加するコード全体"
-        }},
-        "ファイル名2": {{
-            "commit_message": "1行のコミットメッセージ",
-            "updated_code": "修正後または追加するコード全体"
-        }}
-    }}
-}}
-```
-"""
+    system_message = (
+        "あなたは優秀なソフトウェア開発者です。与えられたファイル群を指示に従って"
+        "修正してください。\n\n"
+        "以下のルールを守って、JSONで結果を構造的に返してください：\n"
+        "- lintを考慮して１行88文字を超えないように適宜改行してください。\n"
+        "- JSON以外のテキストは含まないでください。\n"
+        "- 変更または追加が必要なファイルのみを `changes` に含めてください。\n"
+        "- 変更不要なファイルは含めないでください。\n"
+        "- 新規作成が必要なファイルがあれば、それも`changes`に追加してください。\n\n"
+        "```json\n"
+        "{\n"
+        '    "pr_title": "プルリクエストの明確で簡潔な日本語タイトル",\n'
+        '    "pr_body": "プルリクエストの変更点や意図を簡潔に日本語で説明",\n'
+        '    "changes": {\n'
+        '        "ファイル名1": {\n'
+        '            "commit_message": "1行のコミットメッセージ",\n'
+        '            "updated_code": "修正後または追加するコード全体"\n'
+        "        },\n"
+        '        "ファイル名2": {\n'
+        '            "commit_message": "1行のコミットメッセージ",\n'
+        '            "updated_code": "修正後または追加するコード全体"\n'
+        "        }\n"
+        "    }\n"
+        "}\n"
+        "```\n"
+    )
+    user_message = (
+        "## ファイル群：\n" f"{file_descriptions}\n\n" "## 指示：\n" f"{message}\n"
+    )
 
     try:
         response = client.chat.completions.create(
             model=GPT_MODEL,
-            messages=[{"role": "user", "content": prompt}],
+            messages=[
+                {"role": "system", "content": system_message},
+                {"role": "user", "content": user_message},
+            ],
             response_format={"type": "json_object"},
         )
         if response.choices[0].message.content is None:
@@ -144,7 +143,10 @@ async def handle_dev_message(message: str) -> str:
                     branch=branch_name,
                 )
         except GithubException as e:
-            return f"ファイル『{file_name}』のGitHub操作に失敗しました: {e.data.get('message', str(e))}"
+            return (
+                f"ファイル『{file_name}』のGitHub操作に失敗しました: "
+                f"{e.data.get('message', str(e))}"
+            )
         except Exception as e:
             return f"ファイル『{file_name}』の予期せぬエラー: {str(e)}"
 
