@@ -3,7 +3,8 @@ import uuid
 from github import Github
 from openai import OpenAI
 from config import config
-from .github_utils import get_file_from_repo, get_all_file_paths, create_pull_request
+from .github_utils import get_file_from_repo, get_all_file_paths, \
+    create_pull_request
 from github.GithubException import GithubException
 
 PAT = getattr(config, "PAT", "")
@@ -29,13 +30,15 @@ async def handle_dev_message(message: str) -> str:
     branch_name = generate_branch_name()
 
     try:
-        # REPO_NAMEのmainブランチの最新コミットSHAを利用して、FORKED_REPO_NAMEにブランチ作成
+        # REPO_NAMEのmainブランチの最新コミットSHAを利用して、
+        # FORKED_REPO_NAMEにブランチ作成
         base_repo = g.get_repo(REPO_NAME)
         base_main = base_repo.get_branch("main")
         commit_sha = base_main.commit.sha
 
         forked_repo = g.get_repo(FORKED_REPO_NAME)
-        forked_repo.create_git_ref(ref=f"refs/heads/{branch_name}", sha=commit_sha)
+        forked_repo.create_git_ref(ref=f"refs/heads/{branch_name}",
+                                   sha=commit_sha)
     except Exception as e:
         return f"ブランチの作成に失敗しました: {str(e)}"
 
@@ -47,52 +50,54 @@ async def handle_dev_message(message: str) -> str:
             continue
         files_content[file_path] = file.decoded_content.decode("utf-8")
 
-    file_descriptions = "\n".join(
-        [
-            f"### {path}\n```python\n{content}\n```"
-            for path, content in files_content.items()
-        ]
+    file_descriptions = "\n".join([
+        f"### {path}\n```python\n{content}\n```"
+        for path, content in files_content.items()
+    ])
+
+    system_message = (
+        "あなたは優秀なソフトウェア開発者です。以下のファイル群を指示に従って\n"
+        "修正してください。\n"
+        "※今回の指示: dev.pyの中のGPTへの指示について、通常プロンプトとシステム\n"
+        "プロンプトの部分を分けてみてください。lintを考慮して１行88文字を超えない\n"
+        "ように適宜改行してください。また、回答全体はJSONで返してください。"
     )
-
-    prompt = f"""
-あなたは優秀なソフトウェア開発者です。以下のファイル群を指示に従って修正してください。
-
-## ファイル群：
-{file_descriptions}
-
-## 指示：
-{message}
-
-以下のルールを守って、JSONで結果を構造的に返してください：
-
-- 変更または追加が必要なファイルのみを `changes` に含めてください。
-- 変更不要なファイルは含めないでください。
-- 新規作成が必要なファイルがあれば、それも`changes`に追加してください。
-
-回答は以下のフォーマットを厳密に守ってください（JSON以外のテキストを含めないこと）：
-
-```json
-{{
-    "pr_title": "プルリクエストの明確で簡潔な日本語タイトル",
-    "pr_body": "プルリクエストの変更点や意図を簡潔に日本語で説明",
-    "changes": {{
-        "ファイル名1": {{
-            "commit_message": "1行のコミットメッセージ",
-            "updated_code": "修正後または追加するコード全体"
-        }},
-        "ファイル名2": {{
-            "commit_message": "1行のコミットメッセージ",
-            "updated_code": "修正後または追加するコード全体"
-        }}
-    }}
-}}
-```
-"""
+    user_message = (
+        "## ファイル群：\n"
+        f"{file_descriptions}\n\n"
+        "## 指示：\n"
+        f"{message}\n\n"
+        "以下のルールを守って、JSONで結果を構造的に返してください：\n"
+        "- 変更または追加が必要なファイルのみを `changes` に含めてください。\n"
+        "- 変更不要なファイルは含めないでください。\n"
+        "- 新規作成が必要なファイルがあれば、それも`changes`に追加してください。\n\n"
+        "回答は以下のフォーマットを厳密に守ってください（JSON以外のテキストを\n"
+        "含めないこと）：\n\n"
+        "```json\n"
+        "{\n"
+        "    \"pr_title\": \"プルリクエストの明確で簡潔な日本語タイトル\",\n"
+        "    \"pr_body\": \"プルリクエストの変更点や意図を簡潔に日本語で説明\",\n"
+        "    \"changes\": {\n"
+        "        \"ファイル名1\": {\n"
+        "            \"commit_message\": \"1行のコミットメッセージ\",\n"
+        "            \"updated_code\": \"修正後または追加するコード全体\"\n"
+        "        },\n"
+        "        \"ファイル名2\": {\n"
+        "            \"commit_message\": \"1行のコミットメッセージ\",\n"
+        "            \"updated_code\": \"修正後または追加するコード全体\"\n"
+        "        }\n"
+        "    }\n"
+        "}\n"
+        "```\n"
+    )
 
     try:
         response = client.chat.completions.create(
             model=GPT_MODEL,
-            messages=[{"role": "user", "content": prompt}],
+            messages=[
+                {"role": "system", "content": system_message},
+                {"role": "user", "content": user_message}
+            ],
             response_format={"type": "json_object"},
         )
         if response.choices[0].message.content is None:
@@ -144,7 +149,10 @@ async def handle_dev_message(message: str) -> str:
                     branch=branch_name,
                 )
         except GithubException as e:
-            return f"ファイル『{file_name}』のGitHub操作に失敗しました: {e.data.get('message', str(e))}"
+            return (
+                f"ファイル『{file_name}』のGitHub操作に失敗しました: "
+                f"{e.data.get('message', str(e))}"
+            )
         except Exception as e:
             return f"ファイル『{file_name}』の予期せぬエラー: {str(e)}"
 
